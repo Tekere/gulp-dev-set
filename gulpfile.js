@@ -1,21 +1,15 @@
 "use strict";
-// gulpプラグイン 必須
+
 const gulp = require("gulp");
-// Sassをコンパイルするプラグイン 必須
 const sass = require("gulp-sass");
-// エラーがあった際に、gulpを落とさないプラグイン
 const plumber = require("gulp-plumber");
-// エラーがあった際にウィンドウに通知してくれるプラグイン
 const notify = require("gulp-notify");
-// 開発者ツールにSCSSファイルの情報が見られるようにするプラグイン
 const sourcemaps = require("gulp-sourcemaps");
-//ベンタープレフィックスの自動追加
 const autoprefixer = require("gulp-autoprefixer");
-// コンパイル後にメディアクエリをまとめる
 const postcss = require("gulp-postcss");
 const mqpacker = require("css-mqpacker");
-// ブラウザの自動起動と自動リロード
-// const { watch } = require("browser-sync");
+const pug = require("gulp-pug");
+const babel = require("gulp-babel");
 const browserSync = require("browser-sync").create();
 
 //====================
@@ -23,44 +17,44 @@ const browserSync = require("browser-sync").create();
 //====================
 
 gulp.task("sass", function () {
-  // style.scssファイルを取得
-  return (
-    gulp
-      // Sassのコンパイルを実行
-      .src("./scss/*.scss")
-      //sourcemap 読み込み srcの直後
-      .pipe(sourcemaps.init())
-      //エラーが出ても落ちないようにして、ターミナルにエラーメッセージを出す
-      .pipe(
-        plumber({
-          errorHandler: notify.onError("Error: <%= error.message %>"),
-        })
-      )
-      //outputStyleでインデントや改行の設定
-      .pipe(sass({ outputStyle: "compressed" }))
-      //メディアクエリの整理
-      .pipe(postcss([mqpacker()]))
-      //ベンダープレフレックスをつける
-      .pipe(autoprefixer())
-      //sourcemap 実行 destの直前
-      .pipe(sourcemaps.write("./"))
-      // 保存先 直下に保存
-      .pipe(gulp.dest("./"))
-  );
+  return gulp
+    .src("./src/scss/*.scss")
+    .pipe(sourcemaps.init())
+    .pipe(
+      plumber({
+        errorHandler: notify.onError("Error: <%= error.message %>"),
+      })
+    )
+    .pipe(sass({ outputStyle: "compressed" }))
+    .pipe(postcss([mqpacker()]))
+    .pipe(autoprefixer())
+    .pipe(gulp.dest("./dist/css"))
+    .pipe(sourcemaps.write("./"));
 });
-//./cssのsassファイルの変更を検知してsassタスクを自動で実行
-// gulp.task("watch-sass", function () {
-//   gulp.watch("./scss/*.scss", gulp.task("sass"));
-// });
 
-//====================
-//ブラウザの自動起動と自動リロード
-//====================
+gulp.task("pug", function () {
+  return gulp
+    .src("./src/pug/*.pug")
+    .pipe(pug({ pretty: true }))
+    .pipe(gulp.dest("./dist"));
+});
+
+gulp.task("babel", function () {
+  return gulp
+    .src("./src/js/*.js")
+    .pipe(
+      babel({
+        presets: ["@babel/env"],
+      })
+    )
+    .pipe(gulp.dest("./dist/js"));
+});
+
 gulp.task("serve", (done) => {
   browserSync.init({
     server: {
-      baseDir: "./",
-      index: "index.html",
+      baseDir: "./dist",
+      index: "/index.html",
     },
   });
   done();
@@ -74,11 +68,14 @@ gulp.task("watch", () => {
     browserSync.reload();
     done();
   };
-  gulp.watch("./scss/*.scss", gulp.series("sass"));
-  gulp.watch("./**/*", browserReload);
+
+  gulp.watch("./src/scss/*.scss", gulp.series("sass"));
+  gulp.watch("./src/pug/*.pug", gulp.series("pug"));
+  gulp.watch("./src/js/*.js", gulp.series("babel"));
+  gulp.watch("./dist/**/*", browserReload);
 });
 
 //====================
 //  デフォルトとして登録。 コマンド gulpでスタート
 //====================
-gulp.task("default", gulp.series("serve", "watch"));
+gulp.task("default", gulp.series("pug", "sass", "babel", "serve", "watch"));
