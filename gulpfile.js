@@ -35,8 +35,8 @@ gulp.task('sass', function () {
 		.pipe(sass({ outputStyle: 'compressed' }))
 		.pipe(postcss([mqpacker()]))
 		.pipe(autoprefixer())
+		.pipe(sourcemaps.write('./'))
 		.pipe(gulp.dest('./dist/css'))
-		.pipe(sourcemaps.write('/'))
 })
 
 // gulp.task('pug', function () {
